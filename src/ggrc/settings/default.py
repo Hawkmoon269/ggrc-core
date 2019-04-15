@@ -6,7 +6,7 @@
 import os
 import jinja2
 
-DEBUG = False
+DEBUG = True
 TESTING = False
 PRODUCTION = False
 GOOGLE_INTERNAL = False
@@ -140,9 +140,9 @@ LOGGING_HANDLER = {
 LOGGING_FORMATTER = {
     "format": "%(levelname)-8s %(asctime)s %(name)s %(message)s",
 }
-LOGGING_ROOT = "WARNING"
+LOGGING_ROOT = "DEBUG"
 LOGGING_LOGGERS = {
-    "ggrc": "INFO",
+    "ggrc": "DEBUG",
     "ggrc.performance": "INFO",
     # INFO    - logs performance stats for requests
     # WARNING - logs performance for requests that took longer than 1s
