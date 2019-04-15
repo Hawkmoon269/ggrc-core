@@ -53,6 +53,7 @@ class Roleable(object):
   }
 
   def __init__(self, *args, **kwargs):
+    logger.info("dk:: Roleable::__init__")
     for ac_role in role.get_ac_roles_for(self.type).values():
       AccessControlList(
           object=self,
@@ -63,6 +64,7 @@ class Roleable(object):
   @declared_attr
   def _access_control_list(cls):  # pylint: disable=no-self-argument
     """access_control_list"""
+    logger.info("dk:: Roleable::_access_control_list")
     return db.relationship(
         'AccessControlList',
         primaryjoin=lambda: and_(
@@ -76,6 +78,7 @@ class Roleable(object):
 
   @property
   def access_control_list(self):
+    logger.info("dk:: Roleable::access_control_list")
     return [
         AclRecord(acp.person, acp.ac_list)
         for acl in self._access_control_list
@@ -84,14 +87,17 @@ class Roleable(object):
 
   @cached_property
   def acr_acl_map(self):
+    logger.info("dk:: Roleable::acr_acl_map")
     return {acl.ac_role: acl for acl in self._access_control_list}
 
   @cached_property
   def acr_name_acl_map(self):
+    logger.info("dk:: Roleable::acr_name_acl_map")
     return {acl.ac_role.name: acl for acl in self._access_control_list}
 
   @cached_property
   def acr_id_acl_map(self):
+    logger.info("dk:: Roleable::acr_id_acl_map")
     return {acl.ac_role.id: acl for acl in self._access_control_list}
 
   @access_control_list.setter
@@ -102,6 +108,7 @@ class Roleable(object):
         values: List of access control roles or dicts containing json
         representation of custom attribute values.
     """
+    logger.info("dk:: Roleable::access_control_list")
     if values is None:
       return
 
@@ -119,6 +126,7 @@ class Roleable(object):
   @classmethod
   def eager_query(cls):
     """Eager Query"""
+    logger.info("dk:: Roleable::eager_query")
     query = super(Roleable, cls).eager_query()
     return query.options(
         orm.subqueryload(
@@ -142,6 +150,7 @@ class Roleable(object):
   @classmethod
   def indexed_query(cls):
     """Query used by the indexer"""
+    logger.info("dk:: Roleable::indexed_query")
     query = super(Roleable, cls).indexed_query()
     return query.options(
         orm.subqueryload(
@@ -169,6 +178,7 @@ class Roleable(object):
     This function is a hack to preserve backwards compatibility with old
     revision logs.
     """
+    logger.info("dk:: Roleable::acl_json")
     acl_json = []
     for person, acl in self.access_control_list:
       person_entry = acl.log_json()
@@ -182,12 +192,14 @@ class Roleable(object):
   def log_json(self):
     """Log custom attribute values."""
     # pylint: disable=not-an-iterable
+    logger.info("dk:: Roleable::log_json")
     res = super(Roleable, self).log_json()
     res["access_control_list"] = self.acl_json
     return res
 
   def get_persons_for_rolename(self, role_name):
     """Return list of persons that are valid for send role_name."""
+    logger.info("dk:: Roleable::get_persons_for_rolename")
     return [
         acp.person
         for acp in self.acr_name_acl_map[role_name].access_control_people
@@ -195,6 +207,7 @@ class Roleable(object):
 
   def get_person_ids_for_rolename(self, role_name):
     """Return list of persons that are valid for send role_name."""
+    logger.info("dk:: Roleable::get_person_ids_for_rolename")
     if role_name not in self.acr_name_acl_map:
       # This will be removed
       return []
@@ -212,6 +225,7 @@ class Roleable(object):
       boolean flag signifying if there are any access control people changes
       in the current session.
     """
+    logger.info("dk:: Roleable::has_acl_changes")
     return any(
         inspect(acl).attrs["access_control_people"].history.has_changes()
         for acl in self._access_control_list
@@ -232,6 +246,7 @@ class Roleable(object):
       list in the current session. If there is not any ACL with `acr_name`
       ACR, `False` will be returned.
     """
+    logger.info("dk:: Roleable::has_acr_acl_changed")
     if acr_name not in self.acr_name_acl_map:
       return False
     acl = self.acr_name_acl_map[acr_name]
@@ -239,6 +254,7 @@ class Roleable(object):
 
   def validate_acl(self):
     """Check correctness of access_control_list."""
+    logger.info("dk:: Roleable::validate_acl")
     for _, acl in self.access_control_list:
       if acl.object_type != acl.ac_role.object_type:
         raise ValueError(
@@ -258,6 +274,7 @@ class Roleable(object):
     """
     # This can now be fully refactored due to ACP, I am leaving this for the
     # end though.
+    logger.info("dk:: Roleable::validate_role_limit")
     validation_errors = []
     count_roles = defaultdict(int)
     for _, acl in self.access_control_list:
@@ -279,6 +296,7 @@ class Roleable(object):
 
   def add_person_with_role(self, person, ac_role):
     """Add a person to ACL object with a given role."""
+    logger.info("dk:: Roleable::add_person_with_role")
     acl = self.acr_acl_map.get(ac_role)
     if not acl:
       logger.warning(
@@ -293,6 +311,7 @@ class Roleable(object):
 
   def add_person_with_role_id(self, person, ac_role_id):
     """Add a person to ACL object with a given role id."""
+    logger.info("dk:: Roleable::add_person_with_role_id")
     acl = self.acr_id_acl_map.get(ac_role_id)
     if not acl:
       logger.warning(
@@ -306,6 +325,7 @@ class Roleable(object):
 
   def add_person_with_role_name(self, person, ac_role_name):
     """Add a person to ACL object with a given role name."""
+    logger.info("dk:: Roleable::add_person_with_role_name")
     acl = self.acr_name_acl_map.get(ac_role_name)
     if not acl:
       logger.warning(
