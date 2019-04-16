@@ -36,6 +36,7 @@ def insert_select_acls(select_statement):
       parent_id_nn,
       base_id,
   """
+  logger.info("dk:: access_control/utils.py :: insert_select_acls()")
 
   acl_table = all_models.AccessControlList.__table__
   inserter = acl_table.insert().prefix_with("IGNORE")
