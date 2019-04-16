@@ -10,6 +10,11 @@ from ggrc.models.mixins import base
 from ggrc.access_control import people
 
 
+#dk::
+import logging
+logger = logging.getLogger(__name__)
+
+
 class AccessControlList(base.ContextRBAC, mixins.Base, db.Model):
   """Access Control List
 
@@ -71,20 +76,24 @@ class AccessControlList(base.ContextRBAC, mixins.Base, db.Model):
 
   @property
   def object_attr(self):
+    logger.info("dk:: AccessControlList :: object_attr")
     return '{0}_object'.format(self.object_type)
 
   @property
   def object(self):
+    logger.info("dk:: AccessControlList :: object")
     return getattr(self, self.object_attr)
 
   @object.setter
   def object(self, value):
+    logger.info("dk:: AccessControlList :: object.setter")
     self.object_id = getattr(value, 'id', None)
     self.object_type = getattr(value, 'type', None)
     return setattr(self, self.object_attr, value)
 
   @staticmethod
   def _extra_table_args(_):
+    logger.info("dk:: AccessControlList :: _extra_table_args")
     return (
         db.UniqueConstraint(
             'ac_role_id',
@@ -104,6 +113,7 @@ class AccessControlList(base.ContextRBAC, mixins.Base, db.Model):
 
   def _remove_people(self, obsolete_people):
     """Remove people from the current acl."""
+    logger.info("dk:: AccessControlList :: _remove_people")
     if not obsolete_people:
       return
     people_acp_map = {acp.person: acp for acp in self.access_control_people}
@@ -112,6 +122,7 @@ class AccessControlList(base.ContextRBAC, mixins.Base, db.Model):
 
   def _add_people(self, additional_people):
     """Add people to the current acl."""
+    logger.info("dk:: AccessControlList :: _add_people")
     for person in additional_people:
       people.AccessControlPerson(ac_list=self, person=person)
 
@@ -121,6 +132,7 @@ class AccessControlList(base.ContextRBAC, mixins.Base, db.Model):
     Args:
       additional_person: new person model that will be added.
     """
+    logger.info("dk:: AccessControlList :: add_person")
     self.add_people({additional_person})
 
   def add_people(self, additional_people):
@@ -129,10 +141,12 @@ class AccessControlList(base.ContextRBAC, mixins.Base, db.Model):
     Args:
       additional_people: set of people objects that will be added.
     """
+    logger.info("dk:: AccessControlList :: add_people")
     existing_people = {acp.person for acp in self.access_control_people}
     self._add_people(additional_people - existing_people)
 
   def remove_person(self, obsolete_person):
+    logger.info("dk:: AccessControlList :: remove_person")
     self.remove_people({obsolete_person})
 
   def remove_people(self, obsolete_people):
@@ -141,6 +155,7 @@ class AccessControlList(base.ContextRBAC, mixins.Base, db.Model):
     Args:
       obsolete_people: set of people models that will be removed.
     """
+    logger.info("dk:: AccessControlList :: remove_people")
     existing_people = {acp.person for acp in self.access_control_people}
     self._remove_people(obsolete_people & existing_people)
 
@@ -151,6 +166,7 @@ class AccessControlList(base.ContextRBAC, mixins.Base, db.Model):
       new_people: set of people objects. Any existing person missing from that
         set will be removed. Any new people will be added.
     """
+    logger.info("dk:: AccessControlList :: update_people")
     existing_people = {acp.person for acp in self.access_control_people}
     self._remove_people(existing_people - new_people)
     self._add_people(new_people - existing_people)
