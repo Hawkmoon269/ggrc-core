@@ -143,11 +143,11 @@ LOGGING_FORMATTER = {
 LOGGING_ROOT = "DEBUG"
 LOGGING_LOGGERS = {
     "ggrc": "DEBUG",
-    "ggrc.performance": "INFO",
+    "ggrc.performance": "WARNING",
     # INFO    - logs performance stats for requests
     # WARNING - logs performance for requests that took longer than 1s
 
-    "sqlalchemy": "WARNING",
+    "sqlalchemy": "INFO",
     # WARNING - logs warnings and errors only
     # INFO    - logs SQL-queries
     # DEBUG   - logs SQL-queries + result sets
