@@ -19,6 +19,10 @@ from ggrc.models import reflection
 from ggrc.models.mixins import attributevalidator
 from ggrc.models.mixins import base
 
+#dk::
+import logging
+logger = logging.getLogger(__name__)
+
 
 class AccessControlRole(attributevalidator.AttributeValidator,
                         base.ContextRBAC, mixins.Base, db.Model):
@@ -64,6 +68,7 @@ class AccessControlRole(attributevalidator.AttributeValidator,
 
   @staticmethod
   def _extra_table_args(_):
+    logger.info("dk:: AccessControlRole :: _extra_table_args")
     return (
         db.UniqueConstraint('name', 'object_type'),
     )
@@ -71,6 +76,7 @@ class AccessControlRole(attributevalidator.AttributeValidator,
   @classmethod
   def eager_query(cls):
     """Define fields to be loaded eagerly to lower the count of DB queries."""
+    logger.info("dk:: AccessControlRole :: eager_query (%s)", cls.__name__)
     return super(AccessControlRole, cls).eager_query()
 
   _api_attrs = reflection.ApiAttributes(
@@ -106,6 +112,7 @@ class AccessControlRole(attributevalidator.AttributeValidator,
     Returns:
       value if the name passes all uniqueness checks.
     """
+    logger.info("dk:: AccessControlRole :: validates_name (%s)", self.__class__.__name__)
     value = value.strip()
     if key == "name" and self.object_type:
       name = value
@@ -130,6 +137,7 @@ class AccessControlRole(attributevalidator.AttributeValidator,
 def invalidate_acr_caches(mapper, content, target):
   # pylint: disable=unused-argument
   """Clear `global_role_names` if ACR created or update or deleted."""
+  logger.info("dk:: AccessControlRole :: invalidate_acr_caches")
   if hasattr(flask.g, "global_role_names"):
     del flask.g.global_role_names
   if hasattr(flask.g, "global_ac_roles"):
@@ -138,6 +146,7 @@ def invalidate_acr_caches(mapper, content, target):
 
 def acr_modified(obj, session):
   """Check if ACR object was changed or deleted"""
+  logger.info("dk:: AccessControlRole :: acr_modified")
   changed = False
   for attr in inspect(obj).attrs:
     # ACL changes should not be checked
@@ -150,6 +159,7 @@ def acr_modified(obj, session):
 def invalidate_noneditable_change(session, flush_context, instances):
   """Handle snapshot objects on api post requests."""
   # pylint: disable=unused-argument
+  logger.info("dk:: AccessControlRole :: invalidate_noneditable_change")
   acrs = [o for o in session if isinstance(o, AccessControlRole)]
   if not acrs:
     return
@@ -171,6 +181,7 @@ def get_custom_roles_for(object_type):
   return the dict off ACR ids and names related to sent object_type,
   Ids are keys of this dict and names are values.
   """
+  logger.info("dk:: AccessControlRole :: get_custom_roles_for(%s)", object_type)
   if getattr(flask.g, "global_role_names", None) is None:
     flask.g.global_role_names = collections.defaultdict(dict)
     query = db.session.query(
@@ -193,6 +204,7 @@ def get_ac_roles_for(object_type):
   Returns:
       Dict like {"Access Control Role Name": ACR Instance, ...}
   """
+  logger.info("dk:: AccessControlRole :: get_ac_roles_for(%s)", object_type)
   if getattr(flask.g, "global_ac_roles", None) is None:
     flask.g.global_ac_roles = collections.defaultdict(dict)
     query = AccessControlRole.query.filter(
@@ -214,6 +226,7 @@ def get_ac_roles_data_for(object_type):
   Returns:
       Dict like {"Access Control Role Name": ACR data, ...}
   """
+  logger.info("dk:: AccessControlRole :: get_ac_roles_data_for(%s)", object_type)
   if getattr(flask.g, "global_ac_roles_data", None) is None:
     flask.g.global_ac_roles_data = collections.defaultdict(dict)
     query = AccessControlRole.query.filter(
