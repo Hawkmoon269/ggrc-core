@@ -32,6 +32,11 @@ from ggrc.utils import benchmark
 from ggrc.utils import errors
 
 
+#dk::
+import logging
+logger = logging.getLogger(__name__)
+
+
 class Snapshot(rest_handable.WithDeleteHandable,
                roleable.Roleable,
                relationship.Relatable,
@@ -93,6 +98,7 @@ class Snapshot(rest_handable.WithDeleteHandable,
   @orm.validates("parent_type")
   def validate_parent_type(self, _, value):
     """Validates parent_type equals 'Audit'"""
+    logger.info("dk:: Sanpshot :: validate_parent_type")
     # pylint: disable=no-self-use
     if value != "Audit":
       raise ValueError("Wrong 'parent_type' value. Only 'Audit' supported")
@@ -124,20 +130,27 @@ class Snapshot(rest_handable.WithDeleteHandable,
 
   @builder.simple_property
   def archived(self):
-    return self.audit.archived if self.audit else False
+    ret = self.audit.archived if self.audit else False
+    logger.info("dk:: Sanpshot :: archived == (%s)", ret)
+    return ret
 
   @builder.simple_property
   def is_latest_revision(self):
     """Flag if the snapshot has the latest revision."""
-    return self.revisions and self.revision == self.revisions[-1]
+    ret = self.revisions and self.revision == self.revisions[-1]
+    logger.info("dk:: Sanpshot :: is_latest_revision == (%s)", ret)
+    return ret
 
   @builder.simple_property
   def original_object_deleted(self):
     """Flag if the snapshot has the latest revision."""
-    return self.revisions and self.revisions[-1].action == "deleted"
+    ret = self.revisions and self.revisions[-1].action == "deleted"
+    logger.info("dk:: Sanpshot :: original_object_deleted == (%s)", ret)
+    return ret
 
   @classmethod
   def eager_query(cls):
+    logger.info("dk:: Sanpshot :: eager_query")
     query = super(Snapshot, cls).eager_query()
     return cls.eager_inclusions(query, Snapshot._include_links).options(
         orm.subqueryload('revision'),
@@ -147,25 +160,30 @@ class Snapshot(rest_handable.WithDeleteHandable,
 
   @hybrid_property
   def update_revision(self):
+    logger.info("dk:: Sanpshot :: update_revision")
     return self.revision_id
 
   @update_revision.setter
   def update_revision(self, value):
+    logger.info("dk:: Sanpshot :: update_revision.setter")
     self._update_revision = value
     if value == "latest":
       _set_latest_revisions([self])
 
   @property
   def parent(self):
+    logger.info("dk:: Sanpshot :: parent")
     return self.audit
 
   @parent.setter
   def parent(self, value):
+    logger.info("dk:: Sanpshot :: parent.setter")
     setattr(self, "audit", value)
     self.parent_type = "Audit"
 
   @staticmethod
   def _extra_table_args(_):
+    logger.info("dk:: Sanpshot :: _extra_table_args")
     return (
         db.UniqueConstraint(
             "parent_type", "parent_id",
@@ -176,6 +194,7 @@ class Snapshot(rest_handable.WithDeleteHandable,
 
   def _check_related_objects(self):
     """Checks that Snapshot mapped only to Audits before deletion"""
+    logger.info("dk:: Sanpshot :: _check_related_objects")
     for obj in self.related_objects():
       if obj.type not in ("Audit", "Snapshot"):
         db.session.rollback()
@@ -200,6 +219,7 @@ class Snapshot(rest_handable.WithDeleteHandable,
 
   def handle_delete(self):
     """Handle model_deleted signal for Snapshot"""
+    logger.info("dk:: Sanpshot :: handle_delete")
     self._check_related_objects()
 
 
@@ -209,6 +229,7 @@ class Snapshotable(object):
   @declared_attr
   def snapshotted_objects(cls):  # pylint: disable=no-self-argument
     """Return all snapshotted objects"""
+    logger.info("dk:: Sanpshotable :: snapshotted_objects")
     joinstr = "and_(remote(Snapshot.parent_id) == {type}.id, " \
               "remote(Snapshot.parent_type) == '{type}')"
     joinstr = joinstr.format(type=cls.__name__)
@@ -224,6 +245,7 @@ def handle_post_flush(session, flush_context, instances):
   """Handle snapshot objects on api post requests."""
   # pylint: disable=unused-argument
   # Arguments here are set in the event listener and are mandatory.
+  logger.info("dk:: sanpshot.py :: handle_post_flush")
 
   with benchmark("Snapshot pre flush handler"):
 
@@ -250,6 +272,7 @@ def _revert_attrs(objects):
   settable and not editable. This function reverts any possible edits to
   existing values.
   """
+  logger.info("dk:: sanpshot.py :: _revert_attrs")
   attrs = ["parent_id", "parent_type", "child_id", "child_type"]
   for snapshot in objects:
     for attr in attrs:
@@ -265,6 +288,7 @@ def _ensure_program_relationships(objects):
   Args:
     objects: list of snapshot objects with child_id, child_type and parent set.
   """
+  logger.info("dk:: sanpshot.py :: _ensure_program_relationships")
   # assert that every parent is an Audit as the code relies on program_id field
   assert {o.parent_type for o in objects} == {"Audit"}
 
@@ -316,6 +340,7 @@ def _ensure_program_relationships(objects):
 
 def _insert_program_relationships(relationship_stubs):
   """Insert missing obj-program relationships."""
+  logger.info("dk:: sanpshot.py :: _insert_program_relationships")
   if not relationship_stubs:
     return
   current_user_id = get_current_user_id()
@@ -354,6 +379,7 @@ def _set_latest_revisions(objects):
   Args:
     objects: list of snapshot objects with child_id and child_type set.
   """
+  logger.info("dk:: sanpshot.py :: _set_latest_revisions")
   pairs = [(o.child_type, o.child_id) for o in objects]
   query = db.session.query(
       func.max(revision.Revision.id, name="id", identifier="id"),
