@@ -16,6 +16,11 @@ from ggrc.utils import referenced_objects
 from ggrc.utils.revisions_diff import meta_info
 
 
+#dk::
+import logging
+logger = logging.getLogger(__name__)
+
+
 class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   """Revision object holds a JSON snapshot of the object at a time."""
 
@@ -36,6 +41,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
 
   @staticmethod
   def _extra_table_args(_):
+    logger.info("dk:: Revision :: _extra_table_args")
     return (
         db.Index("revisions_modified_by", "modified_by_id"),
         db.Index("ix_revisions_resource_action",
@@ -76,6 +82,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   def eager_query(cls):
     from sqlalchemy import orm
 
+    logger.info("dk:: Revision :: eager_query (%s)", cls.__name__)
     query = super(Revision, cls).eager_query()
     return query.options(
         orm.subqueryload('modified_by'),
@@ -83,6 +90,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
     )
 
   def __init__(self, obj, modified_by_id, action, content):
+    logger.info("dk:: Revision :: __init__(obj=%s)", obj.__class__.__name__)
     self.resource_id = obj.id
     self.resource_type = obj.__class__.__name__
     self.resource_slug = getattr(obj, "slug", None)
@@ -107,12 +115,14 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   @builder.callable_property
   def diff_with_current(self):
     """Callable lazy property for revision."""
+    logger.info("dk:: Revision :: diff_with_current (%s)", self.__class__.__name__)
     referenced_objects.mark_to_cache(self.resource_type, self.resource_id)
     revisions_diff.mark_for_latest_content(self.resource_type,
                                            self.resource_id)
 
     def lazy_loader():
       """Lazy load diff for revisions."""
+      logger.info("dk:: Revision :: diff_with_current :: lazy_loader")
       referenced_objects.rewarm_cache()
       revisions_diff.rewarm_latest_content()
       instance = referenced_objects.get(self.resource_type, self.resource_id)
@@ -126,10 +136,12 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   @builder.callable_property
   def meta(self):
     """Callable lazy property for revision."""
+    logger.info("dk:: Revision :: meta (%s)", self.__class__.__name__)
     referenced_objects.mark_to_cache(self.resource_type, self.resource_id)
 
     def lazy_loader():
       """Lazy load diff for revisions."""
+      logger.info("dk:: Revision :: meta :: lazy_loader")
       referenced_objects.rewarm_cache()
       instance = referenced_objects.get(self.resource_type, self.resource_id)
       meta_dict = {}
@@ -143,6 +155,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   @builder.simple_property
   def description(self):
     """Compute a human readable description from action and content."""
+    logger.info("dk:: Revision :: description (%s)", self.__class__.__name__)
     if 'display_name' not in self._content:
       return ''
     display_name = self._content['display_name']
@@ -184,6 +197,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
 
   def populate_reference_url(self):
     """Add reference_url info for older revisions."""
+    logger.info("dk:: Revision :: populate_reference_url (%s)", self.__class__.__name__)
     if 'url' not in self._content:
       return {}
     reference_url_list = []
@@ -228,6 +242,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
       access_control_list but without any ACL entry that was generated from
         some other ACL entry.
     """
+    logger.info("dk:: Revision :: _filter_internal_acls (%s)", cls.__name__)
     return [
         acl for acl in access_control_list
         if acl.get("parent_id") is None
@@ -236,6 +251,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   @classmethod
   def _populate_acl_with_people(cls, access_control_list):
     """Add person property with person stub on access control list."""
+    logger.info("dk:: Revision :: _populate_acl_with_people (%s)", cls.__name__)
     for acl in access_control_list:
       if "person" not in acl:
         acl["person"] = {"id": acl.get("person_id"), "type": "Person"}
@@ -243,6 +259,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
 
   def populate_acl(self):
     """Add access_control_list info for older revisions."""
+    logger.info("dk:: Revision :: populate_acl (%s)", self.__class__.__name__)
     roles_dict = role.get_custom_roles_for(self.resource_type)
     reverted_roles_dict = {n: i for i, n in roles_dict.iteritems()}
     access_control_list = self._content.get("access_control_list") or []
@@ -309,6 +326,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
 
   def populate_folder(self):
     """Add folder info for older revisions."""
+    logger.info("dk:: Revision :: populate_folder (%s)", self.__class__.__name__)
     if "folder" in self._content:
       return {}
     folders = self._content.get("folders") or [{"id": ""}]
@@ -316,6 +334,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
 
   def populate_labels(self):
     """Add labels info for older revisions."""
+    logger.info("dk:: Revision :: populate_labels (%s)", self.__class__.__name__)
     if "label" not in self._content:
       return {}
     label = self._content["label"]
@@ -324,6 +343,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
 
   def populate_status(self):
     """Update status for older revisions or add it if status does not exist."""
+    logger.info("dk:: Revision :: populate_status (%s)", self.__class__.__name__)
     workflow_models = {
         "Cycle",
         "CycleTaskGroup",
@@ -374,6 +394,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   def populate_review_status(self):
     """Replace os_state with review state for old revisions"""
     from ggrc.models import review
+    logger.info("dk:: Revision :: populate_review_status (%s)", self.__class__.__name__)
     result = {}
     if "os_state" in self._content:
       if self._content["os_state"] is not None:
@@ -398,6 +419,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
       dict with updated display name for each of the evidence entries if there
       are any.
     """
+    logger.info("dk:: Revision :: _document_evidence_hack (%s)", self.__class__.__name__)
     if "document_evidence" not in self._content:
       return {}
     document_evidence = self._content.get("document_evidence")
@@ -412,6 +434,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
     """Fix revision logger.
 
     On controls in category field was loged categorization instances."""
+    logger.info("dk:: Revision :: populate_categoies (%s, %s)", self.__class__.__name__, key_name)
     if self.resource_type != "Control":
       return {}
     result = []
@@ -429,6 +452,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
 
   def _get_cavs(self):
     """Return cavs values from content."""
+    logger.info("dk:: Revision :: _get_cavs (%s)", self.__class__.__name__)
     if "custom_attribute_values" in self._content:
       return self._content["custom_attribute_values"]
     if "custom_attributes" in self._content:
@@ -440,6 +464,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
 
     but now they are associated to instance."""
     from ggrc.models import custom_attribute_definition
+    logger.info("dk:: Revision :: populate_cavs (%s)", self.__class__.__name__)
     cads = custom_attribute_definition.get_custom_attributes_for(
         self.resource_type, self.resource_id)
     cavs = {int(i["custom_attribute_id"]): i for i in self._get_cavs()}
@@ -472,6 +497,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   def populate_cad_default_values(self):
     """Setup default_value to CADs if it's needed."""
     from ggrc.models import all_models
+    logger.info("dk:: Revision :: populate_cad_default_values (%s)", self.__class__.__name__)
     if "custom_attribute_definitions" not in self._content:
       return {}
     cads = []
@@ -491,6 +517,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
     that can contain Requirement old names. This fields would be checked and
     updated where necessary
     """
+    logger.info("dk:: Revision :: populate_requirements (%s)", self.__class__.__name__)
     # change to add Requirement old names
     requirement_type = ["Section", "Clause"]
     # change to add models and fields that can contain Requirement old names
@@ -560,6 +587,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
     """Property. Contains the revision content dict.
 
     Updated by required values, generated from saved content dict."""
+    logger.info("dk:: Revision :: content (%s)", self.__class__.__name__)
     # pylint: disable=too-many-locals
     populated_content = self._content.copy()
     populated_content.update(self.populate_acl())
@@ -584,4 +612,5 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   @content.setter
   def content(self, value):
     """ Setter for content property."""
+    logger.info("dk:: Revision :: content.setter (%s)", self.__class__.__name__)
     self._content = value
